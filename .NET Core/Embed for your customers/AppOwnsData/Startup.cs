@@ -29,11 +29,15 @@ namespace AppOwnsData
             services.AddScoped(typeof(AadService))
                     .AddScoped(typeof(PbiEmbedService));
 
+            services.AddSingleton(typeof(UserMappingService));
+            services.AddHttpContextAccessor();
             services.AddControllersWithViews();
 
             // Loading appsettings.json in C# Model classes
             services.Configure<AzureAd>(Configuration.GetSection("AzureAd"))
                     .Configure<PowerBI>(Configuration.GetSection("PowerBI"));
+
+            
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -47,9 +51,9 @@ namespace AppOwnsData
             {
                 app.UseExceptionHandler("/Home/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
+               // app.UseHsts();
             }
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();

@@ -6,22 +6,29 @@
 namespace AppOwnsData.Services
 {
     using AppOwnsData.Models;
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.Extensions.Options;
     using Microsoft.PowerBI.Api;
     using Microsoft.PowerBI.Api.Models;
     using Microsoft.Rest;
     using System;
     using System.Collections.Generic;
+    using System.Data;
     using System.Linq;
     using System.Runtime.InteropServices;
 
     public class PbiEmbedService
     {
         private readonly AadService aadService;
+        private UserMappingService userMappingService;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly string powerBiApiUrl  = "https://api.powerbi.com";
 
-        public PbiEmbedService(AadService aadService)
+        public PbiEmbedService(AadService aadService,UserMappingService userMappingService, IHttpContextAccessor httpContextAccessor)
         {
             this.aadService = aadService;
+            this.userMappingService = userMappingService;
+            this.httpContextAccessor = httpContextAccessor;
         }
 
         /// <summary>
@@ -71,8 +78,19 @@ namespace AppOwnsData.Services
                     datasetIds.Add(additionalDatasetId);
                 }
 
+                //get username from httpcontext
+
+                var username = httpContextAccessor.HttpContext.User.Identity.Name;
+
+                var ds = datasetIds.Select(id => id.ToString()).ToList();
+                var accessToken = userMappingService.GetAccessTokenForUser(username).Result;
+
+                //optionally validate the accessToken against the database
+
+                var effectiveIdentity = new EffectiveIdentity(username: "", datasets: ds, identityBlob: new IdentityBlob(accessToken));
+
                 // Get Embed token multiple resources
-                embedToken = GetEmbedToken(reportId, datasetIds, workspaceId);
+                embedToken = GetEmbedToken(reportId, datasetIds, workspaceId, effectiveIdentity);
             }
 
             // Add report data for embedding
@@ -148,10 +166,10 @@ namespace AppOwnsData.Services
         /// </summary>
         /// <returns>Embed token</returns>
         /// <remarks>This function is not supported for RDL Report</remakrs>
-        public EmbedToken GetEmbedToken(Guid reportId, IList<Guid> datasetIds, [Optional] Guid targetWorkspaceId)
+        public EmbedToken GetEmbedToken(Guid reportId, IList<Guid> datasetIds, [Optional] Guid targetWorkspaceId, EffectiveIdentity effectiveIdentity)
         {
             PowerBIClient pbiClient = this.GetPowerBIClient();
-
+            
             // Create a request for getting Embed token 
             // This method works only with new Power BI V2 workspace experience
             var tokenRequest = new GenerateTokenRequestV2(
@@ -160,7 +178,9 @@ namespace AppOwnsData.Services
 
                 datasets: datasetIds.Select(datasetId => new GenerateTokenRequestV2Dataset(datasetId.ToString())).ToList(),
 
-                targetWorkspaces: targetWorkspaceId != Guid.Empty ? new List<GenerateTokenRequestV2TargetWorkspace>() { new GenerateTokenRequestV2TargetWorkspace(targetWorkspaceId) } : null
+                targetWorkspaces: targetWorkspaceId != Guid.Empty ? new List<GenerateTokenRequestV2TargetWorkspace>() { new GenerateTokenRequestV2TargetWorkspace(targetWorkspaceId) } : null,
+
+                identities: new Microsoft.PowerBI.Api.Models.EffectiveIdentity[] { effectiveIdentity }
             );
 
             // Generate Embed token
