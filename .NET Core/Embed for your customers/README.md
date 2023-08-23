@@ -15,6 +15,12 @@
 
 Follow the steps on [aka.ms/EmbedForCustomer](https://aka.ms/embedforcustomer)
 
+In addition create DirectQuery report targeting Azure SQL Database, Synapse SQL Pool, Synapse Serverless, or Fabric SQL.
+
+Then create an App Registration in Azure AD and add the resulting user to your SQL environment.  That Service Principal doesn't need any Power BI access.
+
+Then add the ClientId, TenantId, and ClientSecret for your Service Principal to the "EffectiveIdentityUser" section in the appsettings.json (or in your user secrets file for the project).
+
 ### Run the application on localhost
 
 1. Open the [AppOwnsData.sln](./AppOwnsData.sln) file in Visual Studio. If you are using Visual Studio Code then, open [AppOwnsData](./AppOwnsData) folder.
