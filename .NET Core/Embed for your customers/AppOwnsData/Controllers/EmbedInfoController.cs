@@ -9,6 +9,7 @@ namespace AppOwnsData.Controllers
     using AppOwnsData.Services;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Options;
+    using Microsoft.Rest;
     using System;
     using System.Text.Json;
 
@@ -45,9 +46,26 @@ namespace AppOwnsData.Controllers
                 EmbedParams embedParams = pbiEmbedService.GetEmbedParams(new Guid(powerBI.Value.WorkspaceId), new Guid(powerBI.Value.ReportId));
                 return JsonSerializer.Serialize<EmbedParams>(embedParams);
             }
+            catch (HttpOperationException hex)
+            {
+
+                HttpContext.Response.StatusCode = 500;
+
+                if (hex.Response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    return $"BadRequest error generating embed token: {hex.Response.Content}" + "\n\n" + hex.StackTrace; ;
+                }
+                else
+                {
+                    return hex.Message + "\n\n" + hex.StackTrace;
+                }
+
+
+            }
             catch (Exception ex)
             {
                 HttpContext.Response.StatusCode = 500;
+                
                 return ex.Message + "\n\n" + ex.StackTrace;
             }
         }
